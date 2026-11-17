@@ -153,6 +153,8 @@ def other_pads(connection, device, seconds=2.5):
 def open_pad(args):
     """Create the pad, close the console's prompt, and make the pad its user's first."""
     klog = None if args.beside else klog_listen()
+    # the payload reads the console's klog itself: the port this client has (KLOG_PORT), given at run time
+    command(f"klog {KLOG_PORT}")
     answer, _ = command(f"pad open {args.user}".strip())
     if not answer.startswith("ok") or "already open" in answer:
         return say(answer)

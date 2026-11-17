@@ -14,6 +14,8 @@
  *   pad open [USERID]         create a virtual DualSense and give it to a user
  *   pad close                 remove it
  *   pad status                handle, device id, user, last insert result
+ *   klog PORT                 read the kernel log from the klog server on PORT
+ *                             (3232 unless told; the client sends its KLOG_PORT)
  *   pad set B LX LY RX RY L2 R2   hold this state (B is a hex button mask)
  *   pad tap B MS              press B for MS milliseconds, then release
  *   pad handle N              bring-up: use N as the insert handle
@@ -320,6 +322,9 @@ static void pad_hold(uint32_t buttons, int lx, int ly, int rx, int ry, int l2, i
 // The kernel log, for the one line that names a new device: the klog server
 // when the console runs one (/dev/klog has a single reader, and the server is
 // it), the device itself otherwise. -1 when neither opens.
+// The klog server's port: 3232 unless the client names another ("klog PORT", as etaHEN's 9081)
+static int g_klog_port = PS5LOOP_KLOG_PORT;
+
 static int klog_open(void)
 {
     const int connection = socket(AF_INET, SOCK_STREAM, 0);
@@ -329,7 +334,7 @@ static int klog_open(void)
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = htons(PS5LOOP_KLOG_PORT);
+        address.sin_port = htons((uint16_t)g_klog_port);
         if (connect(connection, (struct sockaddr *)&address, sizeof(address)) == 0)
             return connection;
         close(connection);
@@ -878,6 +883,15 @@ static int handle_command(int client, char *line)
     {
         reply(client, "ok ps5loop 1 pid=%d fw=0x%08x pad=%s", (int)getpid(),
               kernel_get_fw_version(), g_pad.open ? "open" : "closed");
+        return 0;
+    }
+    if (strcmp(command, "klog") == 0)
+    {
+        const char *port = strtok(NULL, " \t");
+        const long value = port ? strtol(port, NULL, 10) : 0;
+        if (value > 0 && value < 65536)
+            g_klog_port = (int)value;
+        reply(client, "ok klog port=%d", g_klog_port);
         return 0;
     }
     if (strcmp(command, "quit") == 0)
