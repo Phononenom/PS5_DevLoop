@@ -266,7 +266,26 @@ def fetch(line, args):
         return say(answer)
     name = args.file or ROOT / "captures" / time.strftime("shot-%Y%m%d-%H%M%S.png")
     print(f"{answer.split(' path=')[0]} -> {to_png(data, name)}")
+    if line.split()[0] == "shot" and " path=" in answer:
+        return shot_gone(answer.split(" path=", 1)[1].strip())
     return 0
+
+
+def shot_gone(path):
+    """The capture a shot took, and only that one, checked gone from the console: the payload deletes it
+    as the gallery does; if it is still listed, it is deleted again by that path, then looked for once more.
+    Any other capture, the person's own taken meanwhile included, is never touched."""
+    for attempt in range(2):
+        listed, _ = command("shots")
+        if path + "(" not in listed:
+            if attempt:
+                print(f"ok capture removed on the second try: {path}")
+            return 0
+        if attempt == 0:
+            print(f"capture still on the console, removing it: {path}")
+            say(command(f"forget {path}")[0])
+    print(f"err capture still on the console: {path} (remove it with: forget {path})")
+    return 1
 
 
 def sequence(args):
