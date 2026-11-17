@@ -563,12 +563,23 @@ static void pad_close(char *report, size_t size)
     note(report, size, "delete=0x%08x", (uint32_t)scePadVirtualDeviceDeleteDevice(handle));
 }
 
-// Press and release, timed here and not across the network.
+// Press and release, timed here and not across the network, over what is held
+// ("pad set"): the held buttons, sticks and triggers stay, so that a shot (Create)
+// taken while something is held shows it, and come back after the press.
 static void pad_tap(uint32_t buttons, int hold_ms)
 {
-    pad_hold(buttons, 128, 128, 128, 128, 0, 0);
+    pthread_mutex_lock(&g_pad.lock);
+    const pad_data_t held = g_pad.state;
+    g_pad.state.buttons |= buttons;
+    if ((buttons & PS5LOOP_BUTTON_L2) != 0 && g_pad.state.l2 == 0)
+        g_pad.state.l2 = 255;
+    if ((buttons & PS5LOOP_BUTTON_R2) != 0 && g_pad.state.r2 == 0)
+        g_pad.state.r2 = 255;
+    pthread_mutex_unlock(&g_pad.lock);
     usleep((useconds_t)hold_ms * 1000u);
-    pad_hold(0, 128, 128, 128, 128, 0, 0);
+    pthread_mutex_lock(&g_pad.lock);
+    g_pad.state = held;
+    pthread_mutex_unlock(&g_pad.lock);
     usleep(50000);
 }
 
