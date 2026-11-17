@@ -152,14 +152,20 @@ def other_pads(connection, device, seconds=2.5):
 
 def open_pad(args):
     """Create the pad, close the console's prompt, and make the pad its user's first."""
-    klog = None if args.beside else klog_listen()
+    # A klog server with one reader (etaHEN's) gives the log to whoever connects first: with --late-klog
+    # the payload reads the pad's device id from it, and this connects only afterwards.
+    klog = None if args.beside or args.late_klog else klog_listen()
     # the payload reads the console's klog itself: the port this client has (KLOG_PORT), given at run time
     command(f"klog {KLOG_PORT}")
     answer, _ = command(f"pad open {args.user}".strip())
     if not answer.startswith("ok") or "already open" in answer:
+        if klog is not None:
+            klog.close()
         return say(answer)
     print(answer)
     device = int(answer.split("device=")[1].split()[0], 16)
+    if args.late_klog and not args.beside:
+        klog = klog_listen()
     if not args.keep_prompt:
         # The console asks who the new controller belongs to although it is bound
         # already; Circle, from the pad itself, closes the question.
@@ -169,7 +175,7 @@ def open_pad(args):
         return 0
     # A title reads its user's first controller, so a real one that is connected
     # has to go: PS on it brings it back.
-    pads = other_pads(klog, device)
+    pads = other_pads(klog, device, 5 if args.late_klog else 2.5)
     if pads is None:
         print("klog did not list the controllers: if a real one is connected, titles "
               "read it and not this pad (pad evict DEVICE)")
@@ -290,6 +296,8 @@ def main():
                          help="leave the console's \"Who's using this controller?\" prompt up")
     opening.add_argument("--beside", action="store_true",
                          help="leave a real controller connected (titles then read it, not the pad)")
+    opening.add_argument("--late-klog", action="store_true",
+                         help="read klog only after the payload has (a klog server with one reader, as etaHEN's)")
     commands.add_parser("close")
     commands.add_parser("status")
     press = commands.add_parser("press")
