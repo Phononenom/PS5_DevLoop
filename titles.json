@@ -3,5 +3,10 @@
     "title_id": "PPSA99303",
     "request": "/data/homebrew/PPSA99303/devloop-shot",
     "folder": "/data/homebrew/PPSA99303/baseq3/screenshots"
+  },
+  "playtendoh": {
+    "title_id": "PPSA99360",
+    "request": "/data/homebrew/PPSA99360/devloop-shot",
+    "folder": "/data/homebrew/PPSA99360/devloop-shots"
   }
 }
